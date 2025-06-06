@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { FabricSpec } from '@/types/fabric';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import imageCompression from 'browser-image-compression';
 
 export default function Home() {
   const router = useRouter();
@@ -22,12 +23,6 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 파일 크기 체크 (10MB 제한)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('이미지 크기는 10MB를 초과할 수 없습니다.');
-      return;
-    }
-
     // 파일 타입 체크
     if (!file.type.startsWith('image/')) {
       toast.error('이미지 파일만 업로드 가능합니다.');
@@ -35,7 +30,29 @@ export default function Home() {
     }
 
     setIsLoading(true);
+
     try {
+      let imageFile = file;
+      const options = {
+        maxSizeMB: 4,          // 목표 파일 크기 (4MB)
+        maxWidthOrHeight: 1920, // 이미지의 최대 너비 또는 높이
+        useWebWorker: true,    // 웹 워커를 사용하여 UI 스레드 차단 방지
+      };
+
+      // Vercel의 서버리스 함수 본문 크기 제한(4.5MB)을 고려하여 4MB가 넘는 이미지는 압축
+      if (file.size > options.maxSizeMB * 1024 * 1024) {
+        try {
+          toast.success('이미지가 4MB를 초과하여 압축을 시작합니다.');
+          imageFile = await imageCompression(file, options);
+          toast.success(`이미지 압축 완료! (${(file.size / 1024 / 1024).toFixed(2)}MB -> ${(imageFile.size / 1024 / 1024).toFixed(2)}MB)`);
+        } catch (compressionError) {
+          console.error('Image compression error:', compressionError);
+          toast.error('이미지 압축 중 오류가 발생했습니다.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -48,11 +65,21 @@ export default function Home() {
             body: JSON.stringify({ image: base64String }),
           });
 
-          const data = await response.json();
-
           if (!response.ok) {
-            throw new Error(data.error || 'Failed to analyze image');
+            const errorText = await response.text();
+            console.error("Server Error:", errorText);
+            if (response.status === 413 || errorText.includes('Request Entity Too Large')) {
+              throw new Error('압축 후에도 이미지 파일이 너무 큽니다.');
+            }
+            try {
+              const data = JSON.parse(errorText);
+              throw new Error(data.error || '이미지 분석에 실패했습니다.');
+            } catch (e) {
+              throw new Error(errorText || '이미지 분석 중 알 수 없는 서버 오류가 발생했습니다.');
+            }
           }
+          
+          const data = await response.json();
 
           if (!data || Object.keys(data).length === 0) {
             throw new Error('No data received from analysis');
@@ -98,7 +125,7 @@ export default function Home() {
         setIsLoading(false);
       };
 
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(imageFile);
     } catch (error) {
       console.error('Error handling image upload:', error);
       toast.error('이미지 업로드 중 오류가 발생했습니다.');
