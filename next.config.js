@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   experimental: {
-    optimizeCss: true,
+    optimizeCss: false,
   },
   // Fast Refresh 관련 설정
   webpack: (config, { dev, isServer }) => {
