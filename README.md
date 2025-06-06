@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fabric Spec Recognizer
 
-## Getting Started
+원단 스펙 이미지를 분석하여 텍스트 데이터로 변환하고 관리하는 웹 애플리케이션입니다.
 
-First, run the development server:
+## 주요 기능
 
+- 원단 스펙 이미지 업로드 및 카메라 촬영
+- GPT Vision API를 활용한 이미지 텍스트 추출
+- 추출된 데이터 검토 및 수정
+- Supabase를 통한 데이터 저장 및 관리
+- 중복 데이터 방지를 위한 고유 키 생성
+
+## 기술 스택
+
+- Frontend: Next.js, React, TypeScript
+- UI: Tailwind CSS
+- API: OpenAI GPT-4 Vision
+- Database: Supabase
+- Form Management: React Hook Form, Zod
+
+## 시작하기
+
+1. 저장소 클론
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone [repository-url]
+cd fabric-spec-recognizer
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. 의존성 설치
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. 환경 변수 설정
+`.env.local` 파일을 생성하고 다음 변수들을 설정하세요:
+```
+OPENAI_API_KEY=your_openai_api_key
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. 개발 서버 실행
+```bash
+npm run dev
+```
 
-## Learn More
+## Supabase 설정
 
-To learn more about Next.js, take a look at the following resources:
+1. `fabrics` 테이블 생성
+```sql
+CREATE TABLE fabrics (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  date TEXT NOT NULL,
+  art_no TEXT NOT NULL,
+  mill_name TEXT NOT NULL,
+  composition TEXT NOT NULL,
+  spec TEXT NOT NULL,
+  finishing TEXT NOT NULL,
+  weight TEXT NOT NULL,
+  width TEXT NOT NULL,
+  price TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 환경 변수
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+프로젝트 실행을 위해 다음 환경 변수가 필요합니다:
 
-## Deploy on Vercel
+- `OPENAI_API_KEY`: OpenAI API 키
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase 프로젝트 URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Supabase 익명 키
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 라이선스
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License
