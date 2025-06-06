@@ -2,12 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  experimental: {
-    optimizeCss: true
-  },
-  // CSS 최적화 설정
-  optimizeCss: false,
-  // Fast Refresh 관련 설정
   webpack: (config, { dev, isServer }) => {
     // 개발 환경에서만 적용
     if (dev && !isServer) {
@@ -21,4 +15,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
