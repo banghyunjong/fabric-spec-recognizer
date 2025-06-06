@@ -120,14 +120,15 @@ function ReviewFormComponent() {
     <main className="min-h-screen p-8">
       <h1 className="text-3xl font-bold mb-8">스펙 정보 확인</h1>
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               날짜
             </label>
             <input
               {...register('date')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: 24/8/15"
             />
             {errors.date && (
@@ -136,12 +137,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               Art No.
             </label>
             <input
               {...register('art_no')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: DHYX-WT-11"
             />
             {errors.art_no && (
@@ -150,12 +152,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               제조사/밀
             </label>
             <input
               {...register('mill_name')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: WISH"
             />
             {errors.mill_name && (
@@ -164,12 +167,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               혼용률
             </label>
             <input
               {...register('composition')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: 98% C 2% SP"
             />
             {errors.composition && (
@@ -178,12 +182,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               스펙
             </label>
             <input
               {...register('spec')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: 12*16+70D+16/51*134"
             />
             {errors.spec && (
@@ -192,12 +197,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               후가공
             </label>
             <input
               {...register('finishing')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: Air Washing"
             />
             {errors.finishing && (
@@ -206,12 +212,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               무게
             </label>
             <input
               {...register('weight')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: 340GSM"
             />
             {errors.weight && (
@@ -220,12 +227,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               폭
             </label>
             <input
               {...register('width')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: 54/55&quot;"
             />
             {errors.width && (
@@ -234,12 +242,13 @@ function ReviewFormComponent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-semibold text-slate-700 mb-1">
               가격
             </label>
             <input
               {...register('price')}
-              className="w-full p-2 border rounded-md"
+              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
+                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
               placeholder="예: $3.00"
             />
             {errors.price && (
@@ -248,18 +257,18 @@ function ReviewFormComponent() {
           </div>
         </div>
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 mt-8">
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="px-4 py-2 border rounded-md hover:bg-gray-50"
+            className="px-6 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
           >
             취소
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-6 py-2 bg-sky-600 text-white rounded-md text-sm font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? '저장 중...' : '저장'}
           </button>
