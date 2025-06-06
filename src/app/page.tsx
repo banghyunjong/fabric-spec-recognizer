@@ -10,14 +10,6 @@ import imageCompression from 'browser-image-compression';
 export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [redirectData, setRedirectData] = useState<string | null>(null);
-
-  // 리다이렉트 처리를 useEffect로 이동
-  useEffect(() => {
-    if (redirectData) {
-      router.push(`/review?data=${redirectData}`);
-    }
-  }, [redirectData, router]);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,9 +91,10 @@ export default function Home() {
             sanitizedData.art_no,
             sanitizedData.mill_name,
             sanitizedData.spec,
-            sanitizedData.weight
+            sanitizedData.weight_value,
+            sanitizedData.weight_unit
           ]
-            .map(val => val.replace(/[^a-zA-Z0-9]/g, '')) // 특수문자 제거
+            .map(val => String(val).replace(/[^a-zA-Z0-9]/g, '')) // 특수문자 제거
             .join('_')
             .toLowerCase();
 
@@ -110,9 +103,17 @@ export default function Home() {
             key
           };
 
-          // Base64로 인코딩하여 안전하게 전달
-          const base64Data = btoa(JSON.stringify(dataWithKey));
-          setRedirectData(base64Data);
+          const dataToPass = {
+            ...dataWithKey,
+            image_url: base64String
+          };
+          
+          // sessionStorage에 데이터 저장
+          sessionStorage.setItem('fabricSpecData', JSON.stringify(dataToPass));
+          
+          // 리뷰 페이지로 리다이렉트
+          router.push('/review');
+
         } catch (error) {
           console.error('Error during image analysis:', error);
           toast.error(error instanceof Error ? error.message : '이미지 분석 중 오류가 발생했습니다.');
@@ -131,7 +132,7 @@ export default function Home() {
       toast.error('이미지 업로드 중 오류가 발생했습니다.');
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   return (
     <main className="min-h-screen p-8 flex flex-col items-center justify-center">

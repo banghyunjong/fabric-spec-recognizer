@@ -24,7 +24,7 @@ export async function POST(request: Request) {
           content: [
             {
               type: "text",
-              text: "이미지에서 원단 스펙 정보를 추출해주세요. 반드시 JSON 형식으로만 응답해주세요. 마크다운이나 다른 형식은 사용하지 마세요. 다음 형식으로 응답해주세요: {\"date\": \"string\", \"art_no\": \"string\", \"mill_name\": \"string\", \"composition\": \"string\", \"spec\": \"string\", \"finishing\": \"string\", \"weight\": \"string\", \"width\": \"string\", \"price\": \"string\"} 특별히 date는 YYYYMMDD 형태로 알려주세요. price는 $표시가 있을 경우 $표시는 제외하고 알려주세요"
+              text: "이미지에서 원단 스펙 정보를 추출해주세요. 반드시 JSON 형식으로만 응답해주세요. 마크다운이나 다른 형식은 사용하지 마세요. 무게(weight)는 반드시 숫자(weight_value)와 단위(weight_unit)로 분리해주세요. \n\n**매우 중요한 날짜 처리 규칙:** 이미지의 날짜가 '24/08/15'와 같이 '숫자/숫자/숫자' 형식일 경우, 반드시 **첫 번째 숫자를 연도(YY), 두 번째를 월(MM), 세 번째를 일(DD)로 해석**하세요. 예를 들어 '24/08/15'는 2024년 8월 15일을 의미합니다. 그 후, YY를 2000년대 연도(YYYY)로 변환하여 최종적으로 YYYYMMDD 형식으로 응답해주세요. \n\n가격(price)은 '$' 기호를 제외하고 숫자만, 폭(width)도 숫자만 알려주세요. \n\n다음 JSON 형식으로 응답해주세요: {\"date\": \"string\", \"art_no\": \"string\", \"mill_name\": \"string\", \"composition\": \"string\", \"spec\": \"string\", \"finishing\": \"string\", \"weight_value\": \"string\", \"weight_unit\": \"string\", \"width\": \"string\", \"price\": \"string\"}"
             },
             {
               type: "image_url",

@@ -7,8 +7,10 @@ export interface FabricSpec {
   composition: string;
   spec: string;
   finishing: string;
-  weight: string;
+  weight_value: string;
+  weight_unit: string;
   width: string;
   price: string;
   created_at?: string;
+  image_url?: string;
 } 
