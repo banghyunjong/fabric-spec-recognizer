@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { FabricSpec } from '@/types/fabric';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
 const fabricSchema = z.object({
   key: z.string(),
@@ -22,7 +22,7 @@ const fabricSchema = z.object({
   price: z.string(),
 });
 
-export default function ReviewPage() {
+function ReviewFormComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [shouldRedirect, setShouldRedirect] = useState(false);
@@ -104,9 +104,11 @@ export default function ReviewPage() {
 
   // 초기 데이터가 로드되지 않았으면 로딩 표시
   if (!initialData && !shouldRedirect) {
-    return <div className="min-h-screen p-8 flex items-center justify-center">
-      <div className="text-gray-600">데이터 로드 중...</div>
-    </div>;
+    return (
+      <div className="min-h-screen p-8 flex items-center justify-center">
+        <div className="text-gray-600">데이터 로드 중...</div>
+      </div>
+    );
   }
 
   // 리다이렉트 중이면 아무것도 렌더링하지 않음
@@ -264,5 +266,13 @@ export default function ReviewPage() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-8 flex items-center justify-center">페이지를 로드하고 있습니다...</div>}>
+      <ReviewFormComponent />
+    </Suspense>
   );
 } 
