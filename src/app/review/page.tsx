@@ -1,42 +1,48 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useEffect, useState, Suspense } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { FabricSpec } from '@/types/fabric';
-import { useEffect, useState, Suspense } from 'react';
 
-const fabricSchema = z.object({
-  key: z.string(),
-  date: z.string(),
-  art_no: z.string(),
-  mill_name: z.string(),
-  composition: z.string(),
-  spec: z.string(),
-  finishing: z.string(),
-  weight_value: z.string(),
-  weight_unit: z.string(),
-  width: z.string(),
-  price: z.string(),
-  image_url: z.string().optional(),
-});
+// 새로운 데이터 구조를 위한 타입 정의
+interface ExpertData {
+  key: string;
+  image_url?: string;
+  basic_info: {
+    art_no: string;
+    fabric_name: string;
+    mill_name: string;
+    fabric_type_explanation: string;
+  };
+  yarn_specs: { spec: string; details: string[] }[];
+  dimensions: {
+    width: { value: string; note: string };
+    weight_gsm: { value: string; note: string };
+    weight_gy: { value: string; note: string };
+  };
+  shrinkage: {
+    warp: { value: string; note: string };
+    weft: { value: string; note: string };
+    summary: string;
+  };
+  dyeing_info: {
+    color_count: { value: string; note: string };
+    roll_count: { value: string; note: string };
+  };
+  finishing_processes: { name: string; explanation: string }[];
+  expert_summary: string;
+}
 
-function ReviewFormComponent() {
+
+function ReviewDisplayComponent() {
   const router = useRouter();
-  const [shouldRedirect, setShouldRedirect] = useState(false);
-
-  const [initialData] = useState<FabricSpec | null>(() => {
-    // 이 함수는 컴포넌트가 처음 마운트될 때 단 한 번만 실행됩니다.
-    if (typeof window === 'undefined') {
-      return null;
-    }
+  const [data, setData] = useState<ExpertData | null>(() => {
+    if (typeof window === 'undefined') return null;
     try {
       const dataString = sessionStorage.getItem('fabricSpecData');
       if (dataString) {
-        // 데이터 사용 후 즉시 제거하여 뒤로가기 등에서 문제가 생기지 않도록 합니다.
         sessionStorage.removeItem('fabricSpecData');
         return JSON.parse(dataString);
       }
@@ -46,273 +52,152 @@ function ReviewFormComponent() {
       return null;
     }
   });
-  
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FabricSpec>({
-    resolver: zodResolver(fabricSchema),
-    // 컴포넌트 초기화 시점에 가져온 데이터로 defaultValues를 설정합니다.
-    defaultValues: initialData || undefined,
-  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 데이터 로딩 실패 시 리다이렉트 처리
   useEffect(() => {
-    if (!initialData) {
+    if (data === null) {
       toast.error('분석할 데이터가 없습니다. 다시 시도해주세요.');
-      setShouldRedirect(true);
-    }
-  }, [initialData]);
-
-  // 리다이렉트 실행
-  useEffect(() => {
-    if (shouldRedirect) {
       router.push('/');
     }
-  }, [shouldRedirect, router]);
+  }, [data, router]);
 
-  const onSubmit = async (formData: FabricSpec) => {
-    // DB에 저장하기 전, 화면 표시에만 사용된 이미지 데이터 제거
-    const { image_url, ...dataToSave } = formData;
+  const handleSave = async () => {
+    if (!data) return;
+    setIsSubmitting(true);
 
+    const { image_url, ...restData } = data;
+    
+    // 최종 저장 데이터 구조 flattening
+    const dataToSave: Omit<FabricSpec, 'id' | 'created_at' | 'image_url'> = {
+        key: data.key,
+        art_no: data.basic_info.art_no,
+        name: data.basic_info.fabric_name,
+        mill_name: data.basic_info.mill_name,
+        additional_data: {
+            ...restData
+        }
+    };
+    
     try {
-      // 중복 체크
-      const { data: existingData, error: checkError } = await supabase
-        .from('fabrics')
-        .select('id')
-        .eq('key', dataToSave.key)
-        .limit(1)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('Error checking for duplicates:', checkError);
-        throw checkError;
+        const { data: existingData } = await supabase
+          .from('fabric_specs')
+          .select('id')
+          .eq('key', dataToSave.key)
+          .single();
+  
+        if (existingData) {
+          toast.error('이미 저장된 원단 스펙입니다.');
+          setIsSubmitting(false);
+          return;
+        }
+  
+        await supabase.from('fabric_specs').insert([dataToSave]);
+        toast.success('저장되었습니다!');
+        router.push('/');
+      } catch (error) {
+        console.error('Error saving data:', error);
+        toast.error('저장 중 오류가 발생했습니다.');
+        setIsSubmitting(false);
       }
-
-      if (existingData) {
-        toast.error('이미 저장된 원단 스펙입니다.');
-        return;
-      }
-
-      // 새로운 데이터 저장
-      const { error: insertError } = await supabase
-        .from('fabrics')
-        .insert([dataToSave]);
-      
-      if (insertError) throw insertError;
-      
-      toast.success('저장되었습니다!');
-      router.push('/');
-    } catch (error) {
-      console.error('Error saving data:', error);
-      toast.error('저장 중 오류가 발생했습니다.');
-    }
   };
 
-  // 초기 데이터가 없다면, 리다이렉트 될 때까지 로딩 상태를 보여줍니다.
-  if (!initialData) {
-    return (
-      <div className="min-h-screen p-8 flex items-center justify-center">
-        <div className="text-gray-600">데이터를 확인하는 중...</div>
-      </div>
-    );
+  if (!data) {
+    return <div className="min-h-screen p-8 flex items-center justify-center">데이터를 로드하는 중...</div>;
   }
+  
+  const InfoCard = ({ title, children }: { title: string, children: React.ReactNode }) => (
+    <div className="p-6 border rounded-lg bg-white shadow-sm">
+      <h2 className="text-xl font-semibold mb-4 text-slate-800 border-b pb-2">{title}</h2>
+      <div className="space-y-4">{children}</div>
+    </div>
+  );
+
+  const InfoRow = ({ label, value, note }: { label: string, value: string | React.ReactNode, note?: string }) => (
+    <div>
+      <p className="text-sm font-semibold text-slate-600">{label}</p>
+      <p className="text-lg text-slate-900">{value}</p>
+      {note && <p className="text-xs text-slate-500 mt-1">{note}</p>}
+    </div>
+  );
 
   return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold mb-8">스펙 정보 확인</h1>
+    <main className="min-h-screen p-4 md:p-8 bg-slate-50">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8 text-slate-900">전문가 분석 리포트</h1>
 
-      {initialData?.image_url && (
-        <div className="mb-8 p-4 border rounded-lg bg-white shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-slate-800">분석한 이미지</h2>
-          <div className="flex justify-center">
-            <img src={initialData.image_url} alt="Uploaded fabric spec" className="rounded-md max-h-96 object-contain" />
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              날짜
-            </label>
-            <input
-              {...register('date')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: 24/8/15"
-            />
-            {errors.date && (
-              <p className="text-red-500 text-sm mt-1">{errors.date.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              Art No.
-            </label>
-            <input
-              {...register('art_no')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: DHYX-WT-11"
-            />
-            {errors.art_no && (
-              <p className="text-red-500 text-sm mt-1">{errors.art_no.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              제조사/밀
-            </label>
-            <input
-              {...register('mill_name')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: WISH"
-            />
-            {errors.mill_name && (
-              <p className="text-red-500 text-sm mt-1">{errors.mill_name.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              혼용률
-            </label>
-            <input
-              {...register('composition')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: 98% C 2% SP"
-            />
-            {errors.composition && (
-              <p className="text-red-500 text-sm mt-1">{errors.composition.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              스펙
-            </label>
-            <input
-              {...register('spec')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: 12*16+70D+16/51*134"
-            />
-            {errors.spec && (
-              <p className="text-red-500 text-sm mt-1">{errors.spec.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              후가공
-            </label>
-            <input
-              {...register('finishing')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: Air Washing"
-            />
-            {errors.finishing && (
-              <p className="text-red-500 text-sm mt-1">{errors.finishing.message}</p>
-            )}
-          </div>
-
-          <div className="col-span-1 grid grid-cols-2 gap-x-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                무게
-              </label>
-              <input
-                {...register('weight_value')}
-                className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                           focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-                placeholder="예: 340"
-              />
-              {errors.weight_value && (
-                <p className="text-red-500 text-sm mt-1">{errors.weight_value.message}</p>
-              )}
+        {data.image_url && (
+          <InfoCard title="분석한 이미지">
+            <div className="flex justify-center">
+              <img src={data.image_url} alt="Uploaded fabric spec" className="rounded-md max-h-96 object-contain" />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                단위
-              </label>
-              <input
-                {...register('weight_unit')}
-                className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                           focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-                placeholder="예: GSM"
-              />
-              {errors.weight_unit && (
-                <p className="text-red-500 text-sm mt-1">{errors.weight_unit.message}</p>
-              )}
+          </InfoCard>
+        )}
+        
+        <div className="space-y-6 mt-6">
+            <InfoCard title="기본 정보">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InfoRow label="원단 코드 (Art No.)" value={data.basic_info.art_no} />
+                    <InfoRow label="원단 이름" value={data.basic_info.fabric_name} />
+                    <InfoRow label="제조사명" value={data.basic_info.mill_name} />
+                    <InfoRow label="원단 종류 설명" value={data.basic_info.fabric_type_explanation} />
+                </div>
+            </InfoCard>
+
+            <InfoCard title="사양 (Yarn Spec)">
+                {data.yarn_specs.map((spec, i) => (
+                    <div key={i} className="pt-2">
+                        <p className="text-md font-bold text-slate-700">{spec.spec}</p>
+                        <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-slate-600">
+                            {spec.details.map((detail, j) => <li key={j}>{detail}</li>)}
+                        </ul>
+                    </div>
+                ))}
+            </InfoCard>
+
+            <InfoCard title="규격 (Dimensions)">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <InfoRow label="폭 (Width)" value={data.dimensions.width.value} note={data.dimensions.width.note} />
+                    <InfoRow label="중량 (Weight g/m²)" value={data.dimensions.weight_gsm.value} note={data.dimensions.weight_gsm.note} />
+                    <InfoRow label="중량 (Weight g/yd)" value={data.dimensions.weight_gy.value} note={data.dimensions.weight_gy.note} />
+                </div>
+            </InfoCard>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InfoCard title="수축률 (Shrinkage)">
+                    <InfoRow label="세로 방향 (Warp)" value={data.shrinkage.warp.value} note={data.shrinkage.warp.note} />
+                    <InfoRow label="가로 방향 (Weft)" value={data.shrinkage.weft.value} note={data.shrinkage.weft.note} />
+                    <InfoRow label="요약" value={data.shrinkage.summary} />
+                </InfoCard>
+                <InfoCard title="염색 정보 (Dyeing Info)">
+                    <InfoRow label="컬러 수" value={data.dyeing_info.color_count.value} note={data.dyeing_info.color_count.note} />
+                    <InfoRow label="롤 수" value={data.dyeing_info.roll_count.value} note={data.dyeing_info.roll_count.note} />
+                </InfoCard>
             </div>
-          </div>
+            
+            <InfoCard title="후가공 (Finishing)">
+                 {data.finishing_processes.map((p, i) => <InfoRow key={i} label={p.name} value={p.explanation} /> )}
+            </InfoCard>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              폭
-            </label>
-            <input
-              {...register('width')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: 54/55&quot;"
-            />
-            {errors.width && (
-              <p className="text-red-500 text-sm mt-1">{errors.width.message}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-1">
-              가격
-            </label>
-            <input
-              {...register('price')}
-              className="block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400
-                         focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-              placeholder="예: $3.00"
-            />
-            {errors.price && (
-              <p className="text-red-500 text-sm mt-1">{errors.price.message}</p>
-            )}
-          </div>
+            <InfoCard title="전문가 종합 요약">
+                <p className="text-base text-slate-700 whitespace-pre-wrap">{data.expert_summary}</p>
+            </InfoCard>
         </div>
 
         <div className="flex justify-end space-x-4 mt-8">
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className="px-6 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
-          >
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-6 py-2 bg-sky-600 text-white rounded-md text-sm font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? '저장 중...' : '저장'}
+          <button type="button" onClick={() => router.push('/')} className="button-secondary">취소</button>
+          <button onClick={handleSave} disabled={isSubmitting} className="button-primary">
+            {isSubmitting ? '저장 중...' : '이대로 저장'}
           </button>
         </div>
-      </form>
+      </div>
     </main>
   );
 }
 
 export default function ReviewPage() {
-  // useSearchParams를 사용하지 않으므로 Suspense가 더 이상 필요하지 않을 수 있습니다.
-  // 하지만 동적 로딩을 위해 유지하는 것이 좋습니다.
   return (
     <Suspense fallback={<div className="min-h-screen p-8 flex items-center justify-center">페이지를 로드하고 있습니다...</div>}>
-      <ReviewFormComponent />
+      <ReviewDisplayComponent />
     </Suspense>
   );
 } 

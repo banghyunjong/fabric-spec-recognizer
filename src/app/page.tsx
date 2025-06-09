@@ -58,54 +58,37 @@ export default function Home() {
           });
 
           if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Server Error:", errorText);
-            if (response.status === 413 || errorText.includes('Request Entity Too Large')) {
-              throw new Error('압축 후에도 이미지 파일이 너무 큽니다.');
+            const errorData = await response.json();
+            console.error("Server Error:", errorData);
+            
+            let errorMessage = errorData.error || '이미지 분석에 실패했습니다.';
+            if (errorData.rawContent) {
+              console.error("Problematic Raw Content from API:", errorData.rawContent);
+              errorMessage = `${errorMessage}\n\n[GPT 원본 응답]:\n${errorData.rawContent.substring(0, 300)}...`;
             }
-            try {
-              const data = JSON.parse(errorText);
-              throw new Error(data.error || '이미지 분석에 실패했습니다.');
-            } catch (e) {
-              throw new Error(errorText || '이미지 분석 중 알 수 없는 서버 오류가 발생했습니다.');
-            }
+            throw new Error(errorMessage);
           }
           
           const data = await response.json();
 
-          if (!data || Object.keys(data).length === 0) {
-            throw new Error('No data received from analysis');
+          if (!data || !data.basic_info) {
+            throw new Error('분석 데이터에 기본 정보가 없습니다.');
           }
 
-          // 데이터 정제 및 기본값 설정
-          const sanitizedData = Object.fromEntries(
-            Object.entries(data).map(([key, value]) => [
-              key,
-              String(value).trim() === '' ? '스캔값 없음(입력필요)' : 
-              String(value).replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-            ])
-          ) as Omit<FabricSpec, 'key'>;
-
-          // 고유 키 생성 (art_no + mill_name + spec + weight 조합)
+          // 고유 키 생성 (art_no + name + mill_name 조합)
           const key = [
-            sanitizedData.art_no,
-            sanitizedData.mill_name,
-            sanitizedData.spec,
-            sanitizedData.weight_value,
-            sanitizedData.weight_unit
+            data.basic_info.art_no,
+            data.basic_info.fabric_name,
+            data.basic_info.mill_name,
           ]
-            .map(val => String(val).replace(/[^a-zA-Z0-9]/g, '')) // 특수문자 제거
+            .map(val => String(val || '').replace(/[^a-zA-Z0-9]/g, '')) // 특수문자 제거
             .join('_')
             .toLowerCase();
 
-          const dataWithKey = {
-            ...sanitizedData,
-            key
-          };
-
           const dataToPass = {
-            ...dataWithKey,
-            image_url: base64String
+            ...data,
+            key, // 생성된 고유 키 추가
+            image_url: base64String // 이미지 URL 추가
           };
           
           // sessionStorage에 데이터 저장
