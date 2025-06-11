@@ -1,15 +1,25 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import { FabricSpec } from '@/types/fabric';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import imageCompression from 'browser-image-compression';
+import MaterialDetailsDisplay from '@/components/MaterialDetailsDisplay';
+import Modal from '@/components/Modal';
 
 export default function Home() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 소재 조회를 위한 상태 추가
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState<any[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  // 모달 상태 관리
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -117,15 +127,55 @@ export default function Home() {
     }
   }, [router]);
 
+  // 소재 조회 핸들러 함수
+  const handleMaterialSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      toast.error('소재 코드를 입력해주세요.');
+      return;
+    }
+    
+    setIsSearching(true);
+    setSearchResult(null);
+    setSearchError(null);
+    setIsModalOpen(false); // 이전 모달 닫기
+
+    try {
+      const response = await fetch(`/api/search-material?artcno=${encodeURIComponent(searchQuery.trim())}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `[${response.status}] 소재 정보를 가져오는 데 실패했습니다.`);
+      }
+
+      if (Array.isArray(data) && data.length === 0) {
+        setSearchError('조회 결과가 없습니다.');
+        toast('해당 소재 코드를 찾을 수 없습니다.', { icon: 'ℹ️' });
+      } else {
+        setSearchResult(data);
+        setIsModalOpen(true); // 결과가 있으면 모달 열기
+      }
+
+    } catch (error) {
+      console.error('Material search error:', error);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      setSearchError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
     <main className="min-h-screen p-8 flex flex-col items-center justify-center">
       {isLoading && <LoadingSpinner />}
-      <h1 className="text-3xl font-bold mb-8">원단 스펙 인식기</h1>
-      <div className="w-full max-w-md">
+      
+      <div className="w-full max-w-md text-center">
+        <h1 className="text-3xl font-bold mb-8">원단 스펙 인식기</h1>
         <label
           htmlFor="image-upload"
           className={`block w-full p-8 text-center border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors ${
-            isLoading ? 'opacity-50 pointer-events-none' : ''
+            isLoading || isSearching ? 'opacity-50 pointer-events-none' : ''
           }`}
         >
           <div className="space-y-2">
@@ -156,10 +206,49 @@ export default function Home() {
             capture="environment"
             className="hidden"
             onChange={handleImageUpload}
-            disabled={isLoading}
+            disabled={isLoading || isSearching}
           />
         </label>
       </div>
+      
+      {/* 구분선 */}
+      <div className="my-12 w-full max-w-md flex items-center">
+        <div className="flex-grow border-t border-gray-300"></div>
+        <span className="flex-shrink mx-4 text-gray-500 text-sm">또는</span>
+        <div className="flex-grow border-t border-gray-300"></div>
+      </div>
+      
+      {/* 소재 조회 섹션 */}
+      <div className="w-full max-w-md text-center">
+        <h2 className="text-2xl font-bold mb-4">소재 정보 조회</h2>
+        <form onSubmit={handleMaterialSearch} className="flex gap-2">
+            <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="소재 코드를 입력하세요 (예: BPJ5)"
+                className="input flex-grow"
+                disabled={isLoading || isSearching}
+            />
+            <button type="submit" className="button-primary" disabled={isLoading || isSearching}>
+                {isSearching ? '조회 중...' : '조회'}
+            </button>
+        </form>
+      </div>
+
+      {/* 조회 결과 모달 */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={`소재 정보 조회 결과: ${searchResult?.[0]?.artcno || ''}`}
+      >
+        {isSearching ? <LoadingSpinner /> : (
+            <>
+                {searchError && <p className="text-red-500 text-center">{searchError}</p>}
+                {searchResult && <MaterialDetailsDisplay results={searchResult} />}
+            </>
+        )}
+      </Modal>
     </main>
   );
 }
